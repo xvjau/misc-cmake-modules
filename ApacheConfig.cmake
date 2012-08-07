@@ -1,4 +1,4 @@
-# - Try to find Apache's apr
+# - Try to find Apache's includes/libs and apr
 # Once done this will define
 #
 #  ApacheAPR_FOUND - system has ApacheAPR
