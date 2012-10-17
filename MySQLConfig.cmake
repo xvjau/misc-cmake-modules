@@ -1,47 +1,95 @@
-# - Find mysqlclient
-# Find the native MySQL includes and library
+# - Try to find the MySQL client library
+# based upon GpgmeConfig.
+# Once done this will define
 #
-#  MYSQL_INCLUDE_DIR - where to find mysql.h, etc.
-#  MYSQL_LIBRARIES   - List of libraries when using MySQL.
-#  MYSQL_FOUND       - True if MySQL found.
+#  MYSQL_FOUND - system has MySQL
+#  MYSQL_INCLUDE_DIR - the MySQL include directory
+#  MYSQL_LIBRARY - Link these to use MySQL
+# MYSQL_LIBRARY_DIR - Link directories
 
-IF (MYSQL_INCLUDE_DIR)
-  # Already in cache, be silent
-  SET(MYSQL_FIND_QUIETLY TRUE)
-ENDIF (MYSQL_INCLUDE_DIR)
+if ( MYSQL_INCLUDE_DIR AND MYSQL_LIBRARY AND MYSQL_LIBRARY_DIR )
 
-FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
-  /usr/local/include/mysql
-  /usr/include/mysql
-)
+    # Already in cache
+    set(MYSQL_FOUND TRUE)
 
-SET(MYSQL_NAMES mysqlclient mysqlclient_r)
-FIND_LIBRARY(MYSQL_LIBRARY
-  NAMES ${MYSQL_NAMES}
-  PATHS /usr/lib /usr/local/lib
-  PATH_SUFFIXES mysql
-)
+else()
 
-IF (MYSQL_INCLUDE_DIR AND MYSQL_LIBRARY)
-  SET(MYSQL_FOUND TRUE)
-  SET( MYSQL_LIBRARIES ${MYSQL_LIBRARY} )
-ELSE (MYSQL_INCLUDE_DIR AND MYSQL_LIBRARY)
-  SET(MYSQL_FOUND FALSE)
-  SET( MYSQL_LIBRARIES )
-ENDIF (MYSQL_INCLUDE_DIR AND MYSQL_LIBRARY)
+    execute_process(COMMAND mysql_config --libs RESULT_VARIABLE RET OUTPUT_VARIABLE str_libs OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (NOT ${RET} EQUAL 0)
+        return()
+    endif()
 
-IF (MYSQL_FOUND)
-  IF (NOT MYSQL_FIND_QUIETLY)
-    MESSAGE(STATUS "Found MySQL: ${MYSQL_LIBRARY}")
-  ENDIF (NOT MYSQL_FIND_QUIETLY)
-ELSE (MYSQL_FOUND)
-  IF (MYSQL_FIND_REQUIRED)
-    MESSAGE(STATUS "Looked for MySQL libraries named ${MYSQL_NAMES}.")
-    MESSAGE(FATAL_ERROR "Could NOT find MySQL library")
-  ENDIF (MYSQL_FIND_REQUIRED)
-ENDIF (MYSQL_FOUND)
+    execute_process(COMMAND mysql_config --cflags RESULT_VARIABLE RET OUTPUT_VARIABLE str_includes OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (NOT ${RET} EQUAL 0)
+        return()
+    endif()
 
-MARK_AS_ADVANCED(
-  MYSQL_LIBRARY
-  MYSQL_INCLUDE_DIR
-  )
+    string(FIND ${str_libs} " " pos)
+    if(${pos} EQUAL -1)
+        string(LENGTH ${str_libs} pos)
+    endif()
+
+    while(${pos} GREATER 0)
+        math(EXPR length "${pos} - 1")
+        math(EXPR next "${pos} + 1")
+        string(LENGTH ${str_libs} strlength)
+        math(EXPR strlength "${strlength} - 1")
+
+        string(SUBSTRING ${str_libs} 1 1 prefix)
+
+        if (length GREATER strlength OR length EQUAL strlength)
+            string(SUBSTRING ${str_libs} 2 -1 value)
+            set(pos -1)
+        else()
+            string(SUBSTRING ${str_libs} 2 ${length} value)
+
+            string(SUBSTRING ${str_libs} ${next} -1 str_libs)
+            string(FIND ${str_libs} " " pos)
+        endif()
+
+        string(STRIP ${value} value)
+
+        if (${prefix} STREQUAL "L")
+            list(APPEND MYSQL_LIBRARY_DIR ${value})
+        elseif(${prefix} STREQUAL "l")
+            list(APPEND MYSQL_LIBRARY ${value})
+        endif()
+    endwhile()
+
+    string(FIND ${str_includes} " " pos)
+    if(${pos} EQUAL -1)
+        string(LENGTH ${str_includes} pos)
+    endif()
+
+    while(${pos} GREATER 0)
+        math(EXPR length "${pos} - 1")
+        math(EXPR next "${pos} + 1")
+        string(LENGTH ${str_includes} strlength)
+        math(EXPR strlength "${strlength} - 1")
+
+        string(SUBSTRING ${str_includes} 1 1 prefix)
+
+        if (length GREATER strlength OR length EQUAL strlength)
+            string(SUBSTRING ${str_includes} 2 -1 value)
+            set(pos -1)
+        else()
+            string(SUBSTRING ${str_includes} 2 ${length} value)
+
+            string(SUBSTRING ${str_includes} ${next} -1 str_includes)
+            string(FIND ${str_includes} " " pos)
+        endif()
+
+        string(STRIP ${value} value)
+
+        if (${prefix} STREQUAL "I")
+            list(APPEND MYSQL_INCLUDE_DIR ${value})
+        endif()
+    endwhile()
+
+    mark_as_advanced(
+        MYSQL_LIBRARY
+        MYSQL_INCLUDE_DIR
+        MYSQL_LIBRARY_DIR
+    )
+
+endif()
