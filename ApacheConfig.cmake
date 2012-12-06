@@ -16,7 +16,7 @@ if (NOT (ApacheAPR_INCLUDE_DIR AND ApacheAPR_LINK_FLAGS ))
 		endif()
 	endif()
 
-	find_path(ApacheINCLUDE_DIR httpd.h HINTS /usr/include/apache2)
+    find_path(ApacheINCLUDE_DIR httpd.h HINTS /usr/include/apache2 /usr/include/httpd)
 
 	if(${ApacheAPR_FOUND})
 		mark_as_advanced(ApacheAPR_INCLUDE_DIR ApacheAPR_LINK_FLAGS)
